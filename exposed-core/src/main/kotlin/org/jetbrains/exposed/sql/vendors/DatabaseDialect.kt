@@ -160,6 +160,9 @@ interface DatabaseDialect {
     /** Returns the SQL statement that adds a primary key specified [pkName] to an existing [table]. */
     fun addPrimaryKey(table: Table, pkName: String?, vararg pkColumns: Column<*>): String
 
+    /** Returns the SQL statement that define primary key constraint [pkName] for columns [columns] **/
+    fun primaryKeyConstraint(pkName: String?, columns: List<Column<*>>): String
+
     /** Returns the SQL statement that creates a database with the specified [name]. */
     fun createDatabase(name: String) = "CREATE DATABASE IF NOT EXISTS ${name.inProperCase()}"
 

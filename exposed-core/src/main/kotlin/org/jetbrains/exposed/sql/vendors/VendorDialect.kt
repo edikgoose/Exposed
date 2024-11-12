@@ -254,4 +254,15 @@ abstract class VendorDialect(
         val constraint = pkName?.let { " CONSTRAINT ${identifierManager.quoteIfNecessary(it)} " } ?: " "
         return "ALTER TABLE ${transaction.identity(table)} ADD${constraint}PRIMARY KEY $columns"
     }
+
+    override fun primaryKeyConstraint(
+        pkName: String?,
+        columns: List<Column<*>>
+    ): String {
+        return columns.joinToString(
+            prefix = "CONSTRAINT $pkName PRIMARY KEY (",
+            postfix = ")",
+            transform = TransactionManager.current()::identity
+        )
+    }
 }
