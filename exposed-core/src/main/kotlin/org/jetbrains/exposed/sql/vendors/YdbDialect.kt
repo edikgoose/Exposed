@@ -1,15 +1,24 @@
 package org.jetbrains.exposed.sql.vendors
 
 import org.jetbrains.exposed.exceptions.UnsupportedByDialectException
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Expression
+import org.jetbrains.exposed.sql.GroupConcat
+import org.jetbrains.exposed.sql.QueryBuilder
+import org.jetbrains.exposed.sql.append
+import org.jetbrains.exposed.sql.exposedLogger
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 
 class YdbDialect(override val name: String = dialectName) :
     VendorDialect(dialectName, YdbDataTypeProvider, YdbFunctionProvider) {
     override val supportsCreateSequence = false
+    override val supportsRestrictReferenceOption = false
+    override val supportsSetDefaultReferenceOption = false
+    override val supportsForeignKeyConstraint = false
+    override val supportsAutoIncReturn: Boolean = false
 
     override fun primaryKeyConstraint(pkName: String?, columns: List<Column<*>>): String {
-        exposedLogger.warn("YDB does not support primary key naming. The name of the constraint will be generated automatically.")
+        exposedLogger.warn("YDB does not support custom primary key naming. The name of the constraint will be generated automatically.")
         return columns
             .joinToString(
                 prefix = "PRIMARY KEY (",
@@ -31,14 +40,14 @@ internal object YdbDataTypeProvider : DataTypeProvider() {
     override fun integerType() = "Int32"
     override fun uintegerType() = "Uint32"
 
-    override fun integerAutoincType() = "${integerType()} Serial"
-    override fun uintegerAutoincType() = "${uintegerType()} Serial"
+    override fun integerAutoincType() = "Serial"
+    override fun uintegerAutoincType() = "Serial"
 
     override fun longType() = "Int64"
     override fun ulongType() = "Uint64"
 
-    override fun longAutoincType() = "${longType()} Serial"
-    override fun ulongAutoincType() = "${ulongType()} Serial"
+    override fun longAutoincType() = "BigSerial"
+    override fun ulongAutoincType() = "BigSerial"
 
     override fun doubleType() = "Double"
 

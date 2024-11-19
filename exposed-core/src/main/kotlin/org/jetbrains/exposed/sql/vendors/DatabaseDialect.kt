@@ -27,6 +27,12 @@ interface DatabaseDialect {
     /** Returns `true` if the dialect requires the use of a sequence to create an auto-increment column, `false` otherwise. */
     val needsSequenceToAutoInc: Boolean get() = false
 
+    /** Returns `true` if the dialect supports returning auto incremented values **/
+    val supportsAutoIncReturn: Boolean get() = true
+
+    /** Returns `true` if the dialect supports foreign key constraint **/
+    val supportsForeignKeyConstraint: Boolean get() = true
+
     /** Returns the default reference option for the dialect. */
     val defaultReferenceOption: ReferenceOption get() = ReferenceOption.RESTRICT
 

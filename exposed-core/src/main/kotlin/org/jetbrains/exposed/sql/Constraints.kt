@@ -1,5 +1,6 @@
 package org.jetbrains.exposed.sql
 
+import org.jetbrains.exposed.exceptions.UnsupportedByDialectException
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.vendors.DatabaseDialect
 import org.jetbrains.exposed.sql.vendors.MysqlDialect
@@ -63,7 +64,11 @@ data class ForeignKeyConstraint(
         onUpdate: ReferenceOption?,
         onDelete: ReferenceOption?,
         name: String?
-    ) : this(mapOf(from to target), onUpdate, onDelete, name)
+    ) : this(mapOf(from to target), onUpdate, onDelete, name) {
+        if (!currentDialect.supportsForeignKeyConstraint) {
+            throw UnsupportedByDialectException("Foreign key constraint is not supported by Vendor", currentDialect)
+        }
+    }
 
     private val tx: Transaction
         get() = TransactionManager.current()
