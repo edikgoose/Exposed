@@ -863,6 +863,13 @@ abstract class FunctionProvider {
         }
     }
 
+    open fun <T : String?> trim(
+        queryBuilder: QueryBuilder,
+        expr: Expression<T>
+    ) = queryBuilder {
+        append("TRIM(", expr, ")")
+    }
+
     /** Appends optional parameters to an EXPLAIN query. */
     protected open fun StringBuilder.appendOptionsToExplain(options: String) {
         append("$options ")

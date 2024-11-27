@@ -83,4 +83,8 @@ internal object YdbFunctionProvider : FunctionProvider() {
         queryBuilder {
             append("FIND(", expr, ", '", substring, "')")
         }
+
+    override fun <T : String?> trim(queryBuilder: QueryBuilder, expr: Expression<T>) {
+        throw UnsupportedByDialectException("YDB does not support TRIM", currentDialect)
+    }
 }

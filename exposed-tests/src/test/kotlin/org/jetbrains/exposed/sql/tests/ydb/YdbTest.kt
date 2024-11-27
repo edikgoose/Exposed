@@ -29,12 +29,23 @@ class YdbTest {
     @Test
     fun testLocate() {
         transaction {
+            SchemaUtils.create(FaqItems)
+            FaqItems.insert {
+                it[id] = 1
+                it[name] = "abcd"
+            }
+            FaqItems.insert {
+                it[id] = 1
+                it[name] = "cd"
+            }
             val locateCd: Expression<Int> = FaqItems.name.locate("cd")
 
             val result = FaqItems.select(FaqItems.name, locateCd).map { it[locateCd] }
 
             assertEquals(2, result[0])
             assertEquals(0, result[1])
+
+            SchemaUtils.drop(FaqItems)
         }
     }
 
@@ -65,38 +76,38 @@ class YdbTest {
             Users.insert {
                 it[id] = "andrey"
                 it[name] = "Andrey"
-                it[Users.cityId] = 5
+                it[cityId] = 5
             }
 
             Users.insert {
                 it[id] = "sergey"
                 it[name] = "Sergey"
-                it[Users.cityId] = munichId
+                it[cityId] = munichId
             }
 
             Users.insert {
                 it[id] = "eugene"
                 it[name] = "Eugene"
-                it[Users.cityId] = munichId
+                it[cityId] = munichId
             }
 
             Users.insert {
                 it[id] = "alex"
                 it[name] = "Alex"
-                it[Users.cityId] = null
+                it[cityId] = null
             }
 
             Users.insert {
                 it[id] = "smth"
                 it[name] = "Something"
-                it[Users.cityId] = null
+                it[cityId] = null
             }
 
             Users.update({ Users.id eq "alex" }) {
                 it[name] = "Alexey"
             }
 
-            Users.deleteWhere { Users.name like "%thing" }
+            Users.deleteWhere { name like "%thing" }
 
             println("All cities:")
 
@@ -134,15 +145,15 @@ class YdbTest {
                     .select(Cities.name, Users.id.count())
                     .groupBy(Cities.name)
                 ).forEach {
-                    val cityName = it[Cities.name]
-                    val userCount = it[Users.id.count()]
+                val cityName = it[Cities.name]
+                val userCount = it[Users.id.count()]
 
-                    if (userCount > 0) {
-                        println("$userCount user(s) live(s) in $cityName")
-                    } else {
-                        println("Nobody lives in $cityName")
-                    }
+                if (userCount > 0) {
+                    println("$userCount user(s) live(s) in $cityName")
+                } else {
+                    println("Nobody lives in $cityName")
                 }
+            }
 
             SchemaUtils.drop(Users, Cities)
         }
@@ -164,16 +175,6 @@ class YdbTest {
                 }
             )
             transaction {
-                SchemaUtils.drop(FaqItems)
-                SchemaUtils.create(FaqItems)
-                FaqItems.insert {
-                    it[id] = 1
-                    it[name] = "abcd"
-                }
-                FaqItems.insert {
-                    it[id] = 1
-                    it[name] = "cd"
-                }
             }
         }
 
