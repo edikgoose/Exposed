@@ -142,4 +142,13 @@ subprojects {
             dependency(rootProject.libs.mssql)
         }
     }
+
+    testDb("ydb") {
+        port = 3006
+        dialects("YDB")
+        dependencies {
+            dependency(rootProject.libs.ydb)
+        }
+
+    }
 }

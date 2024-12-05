@@ -115,6 +115,14 @@ enum class TestDB(
             "jdbc:mariadb://127.0.0.1:3000/testdb"
         },
         "org.mariadb.jdbc.Driver"
+    ),
+    YDB(
+        {
+            "jdbc:ydb:grpc://localhost:3006/local"
+        },
+        "tech.ydb.jdbc.YdbDriver",
+        user = "",
+        pass = ""
     );
 
     var db: Database? = null

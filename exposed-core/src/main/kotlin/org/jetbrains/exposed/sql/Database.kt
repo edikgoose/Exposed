@@ -126,7 +126,8 @@ class Database private constructor(
             "jdbc:mariadb" to "org.mariadb.jdbc.Driver",
             "jdbc:oracle" to "oracle.jdbc.OracleDriver",
             "jdbc:sqlite" to "org.sqlite.JDBC",
-            "jdbc:sqlserver" to "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+            "jdbc:sqlserver" to "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+            "jdbc:ydb" to "tech.ydb.jdbc.YdbDriver"
         )
         private val dialectMapping = mutableMapOf(
             "jdbc:h2" to H2Dialect.dialectName,
@@ -136,7 +137,8 @@ class Database private constructor(
             "jdbc:mariadb" to MariaDBDialect.dialectName,
             "jdbc:oracle" to OracleDialect.dialectName,
             "jdbc:sqlite" to SQLiteDialect.dialectName,
-            "jdbc:sqlserver" to SQLServerDialect.dialectName
+            "jdbc:sqlserver" to SQLServerDialect.dialectName,
+            "jdbc:ydb" to YdbDialect.dialectName
         )
 
         init {
@@ -148,6 +150,7 @@ class Database private constructor(
             registerDialect(OracleDialect.dialectName) { OracleDialect() }
             registerDialect(SQLServerDialect.dialectName) { SQLServerDialect() }
             registerDialect(MariaDBDialect.dialectName) { MariaDBDialect() }
+            registerDialect(YdbDialect.dialectName) { YdbDialect() }
         }
 
         /** Registers a new [DatabaseDialect] with the identifier [prefix]. */
@@ -315,7 +318,7 @@ class Database private constructor(
         /** Returns the stored default transaction isolation level for a specific database. */
         fun getDefaultIsolationLevel(db: Database): Int =
             when (db.dialect) {
-                is SQLiteDialect -> Connection.TRANSACTION_SERIALIZABLE
+                is SQLiteDialect, is YdbDialect -> Connection.TRANSACTION_SERIALIZABLE
                 is MysqlDialect -> Connection.TRANSACTION_REPEATABLE_READ
                 else -> Connection.TRANSACTION_READ_COMMITTED
             }

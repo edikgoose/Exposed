@@ -2,10 +2,7 @@ package org.jetbrains.exposed.sql
 
 import org.jetbrains.exposed.exceptions.UnsupportedByDialectException
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.DatabaseDialect
-import org.jetbrains.exposed.sql.vendors.MysqlDialect
-import org.jetbrains.exposed.sql.vendors.SQLiteDialect
-import org.jetbrains.exposed.sql.vendors.currentDialect
+import org.jetbrains.exposed.sql.vendors.*
 import org.jetbrains.exposed.sql.vendors.currentDialectIfAvailable
 import org.jetbrains.exposed.sql.vendors.inProperCase
 
@@ -64,11 +61,7 @@ data class ForeignKeyConstraint(
         onUpdate: ReferenceOption?,
         onDelete: ReferenceOption?,
         name: String?
-    ) : this(mapOf(from to target), onUpdate, onDelete, name) {
-        if (!currentDialect.supportsForeignKeyConstraint) {
-            throw UnsupportedByDialectException("Foreign key constraint is not supported by Vendor", currentDialect)
-        }
-    }
+    ) : this(mapOf(from to target), onUpdate, onDelete, name)
 
     private val tx: Transaction
         get() = TransactionManager.current()
@@ -124,6 +117,11 @@ data class ForeignKeyConstraint(
 
     internal val foreignKeyPart: String
         get() = buildString {
+            if (!currentDialect.supportsForeignKeyConstraint) {
+                exposedLogger.warn("${currentDialect.name} doesn't support FOREIGN KEY constraint at all")
+                return ""
+            }
+
             if (fkName.isNotBlank()) {
                 append("CONSTRAINT $fkName ")
             }
@@ -172,6 +170,9 @@ data class ForeignKeyConstraint(
         val constraintType = when (currentDialect) {
             is MysqlDialect -> "FOREIGN KEY"
             else -> "CONSTRAINT"
+        }
+        if (currentDialect is YdbDialect) {
+            return listOf()
         }
         return listOf("ALTER TABLE $fromTableName DROP $constraintType $fkName")
     }

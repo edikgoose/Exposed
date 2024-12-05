@@ -1689,7 +1689,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
         return primaryKey?.let { primaryKey ->
             val tr = TransactionManager.current()
             val constraint = tr.db.identifierManager.cutIfNecessaryAndQuote(primaryKey.name)
-            return currentDialect.primaryKeyConstraint(constraint, columns)
+            return currentDialect.primaryKeyConstraint(constraint, primaryKey.columns.toList())
         }
     }
 

@@ -61,6 +61,7 @@ class Column<T>(
 
     internal val isPrimaryConstraintWillBeDefined: Boolean
         get() = when {
+            currentDialect is YdbDialect -> true
             currentDialect is SQLiteDialect && columnType.isAutoInc -> false
             table.isCustomPKNameDefined() -> isLastColumnInPK
             isOneColumnPK() -> false

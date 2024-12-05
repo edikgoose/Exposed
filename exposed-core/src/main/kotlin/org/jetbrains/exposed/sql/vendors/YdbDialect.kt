@@ -27,6 +27,8 @@ class YdbDialect(override val name: String = dialectName) :
             )
     }
 
+    override fun isAllowedAsColumnDefault(e: Expression<*>) = false
+
     companion object : DialectNameProvider("YDB")
 }
 
@@ -54,8 +56,8 @@ internal object YdbDataTypeProvider : DataTypeProvider() {
     override fun textType() = "String"
     override fun mediumTextType() = textType()
     override fun largeTextType() = textType()
-    override fun varcharType(colLength: Int) =
-        throw UnsupportedByDialectException("YDB does not support varchar type", currentDialect)
+    override fun varcharType(colLength: Int) = textType()
+
 
     override fun binaryType() = "String"
     override fun binaryType(length: Int) =
