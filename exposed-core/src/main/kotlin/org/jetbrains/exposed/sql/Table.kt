@@ -1724,6 +1724,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
                             name.startsWith(generatedUnsignedCheckPrefix) ||
                                 name.startsWith(generatedSignedCheckPrefix)
                         }
+                        is YdbDialect -> emptyList()
                         is SQLServerDialect -> checkConstraints.filterNot { (name, _) ->
                             name.startsWith("${generatedUnsignedCheckPrefix}byte_") ||
                                 name.startsWith("${generatedSignedCheckPrefix}short")

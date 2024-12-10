@@ -1,12 +1,8 @@
 package org.jetbrains.exposed.sql.vendors
 
 import org.jetbrains.exposed.exceptions.UnsupportedByDialectException
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Expression
-import org.jetbrains.exposed.sql.GroupConcat
-import org.jetbrains.exposed.sql.QueryBuilder
-import org.jetbrains.exposed.sql.append
-import org.jetbrains.exposed.sql.exposedLogger
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 
 class YdbDialect(override val name: String = dialectName) :
@@ -28,6 +24,39 @@ class YdbDialect(override val name: String = dialectName) :
     }
 
     override fun isAllowedAsColumnDefault(e: Expression<*>) = false
+
+    override fun createIndex(index: Index): String {
+        val t = TransactionManager.current()
+        val quotedTableName = t.identity(index.table)
+        val quotedIndexName = t.db.identifierManager.cutIfNecessaryAndQuote(index.indexName)
+        val keyFields = index.columns.plus(index.functions ?: emptyList())
+        val fieldsList = keyFields.joinToString(prefix = "(", postfix = ")") {
+            when (it) {
+                is Column<*> -> t.identity(it)
+                is Function<*> -> it.toString()
+                // returned by existingIndices() mapping String metadata to stringLiteral()
+                is LiteralOp<*> -> it.value.toString().trim('"')
+                else -> {
+                    exposedLogger.warn("Unexpected defining key field will be passed as String: $it")
+                    it.toString()
+                }
+            }
+        }
+        val includesOnlyColumns = index.functions?.isEmpty() != false
+
+        if (!includesOnlyColumns) {
+            exposedLogger.warn("YDB does not support index functions. The index will not be created.")
+            return ""
+        }
+
+        return buildString {
+            append("ALTER TABLE $quotedTableName ADD INDEX $quotedIndexName GLOBAL ")
+            if (index.unique) {
+                append("UNIQUE ")
+            }
+            append("ON $fieldsList")
+        }
+    }
 
     companion object : DialectNameProvider("YDB")
 }
