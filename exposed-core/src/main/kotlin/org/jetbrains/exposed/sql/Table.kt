@@ -1694,7 +1694,9 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
     }
 
     override fun createStatement(): List<String> {
-        val addForeignKeysInAlterPart = SchemaUtils.checkCycle(this) && currentDialect !is SQLiteDialect
+        val addForeignKeysInAlterPart = SchemaUtils.checkCycle(this)
+            && currentDialect !is SQLiteDialect
+            && currentDialect.supportsForeignKeyConstraint
 
         val foreignKeyConstraints = foreignKeys
 
@@ -1714,7 +1716,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
                     primaryKeyConstraint()?.let { append(", $it") }
                 }
 
-                if (!addForeignKeysInAlterPart && foreignKeyConstraints.isNotEmpty()) {
+                if (!addForeignKeysInAlterPart && foreignKeyConstraints.isNotEmpty() && currentDialect.supportsForeignKeyConstraint) {
                     foreignKeyConstraints.joinTo(this, prefix = ", ", separator = ", ") { it.foreignKeyPart }
                 }
 

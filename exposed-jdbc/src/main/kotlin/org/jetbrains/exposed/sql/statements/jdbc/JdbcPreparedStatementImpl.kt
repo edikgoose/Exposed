@@ -6,12 +6,14 @@ import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.statements.StatementResult
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.vendors.SQLiteDialect
+import org.jetbrains.exposed.sql.vendors.YdbDialect
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import java.io.InputStream
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Statement
 import java.sql.Types
+import java.sql.Types.OTHER
 
 /**
  * Class representing a precompiled SQL [statement].
@@ -72,6 +74,8 @@ class JdbcPreparedStatementImpl(
     override fun setNull(index: Int, columnType: IColumnType<*>) {
         if (columnType is BinaryColumnType || (columnType is BlobColumnType && !columnType.useObjectIdentifier)) {
             statement.setNull(index, Types.LONGVARBINARY)
+        } else if (currentDialect is YdbDialect) {
+            statement.setNull(index, OTHER)
         } else {
             statement.setObject(index, null)
         }

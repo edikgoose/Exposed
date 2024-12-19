@@ -12,6 +12,8 @@ class YdbDialect(override val name: String = dialectName) :
     override val supportsSetDefaultReferenceOption = false
     override val supportsForeignKeyConstraint = false
     override val supportsAutoIncReturn: Boolean = false
+    override val supportsCollate: Boolean = false
+    override val supportsOnlyIdentifiersInGeneratedKeys: Boolean = true
 
     override fun primaryKeyConstraint(pkName: String?, columns: List<Column<*>>): String {
         exposedLogger.warn("YDB does not support custom primary key naming. The name of the constraint will be generated automatically.")
@@ -86,6 +88,7 @@ internal object YdbDataTypeProvider : DataTypeProvider() {
     override fun mediumTextType() = textType()
     override fun largeTextType() = textType()
     override fun varcharType(colLength: Int) = textType()
+    override fun charTextType(): String = textType()
 
 
     override fun binaryType() = "String"
@@ -103,6 +106,13 @@ internal object YdbDataTypeProvider : DataTypeProvider() {
     override fun booleanType() = "Bool"
 
     override fun hexToDb(hexString: String): String = "X'$hexString'"
+
+    override fun precessOrderByClause(queryBuilder: QueryBuilder, expression: Expression<*>, sortOrder: SortOrder) {
+        when (sortOrder) {
+            SortOrder.ASC, SortOrder.DESC -> super.precessOrderByClause(queryBuilder, expression, sortOrder)
+            else -> throw UnsupportedByDialectException("YDB does not support sorting by $sortOrder", currentDialect)
+        }
+    }
 }
 
 internal object YdbFunctionProvider : FunctionProvider() {
@@ -117,5 +127,20 @@ internal object YdbFunctionProvider : FunctionProvider() {
 
     override fun <T : String?> trim(queryBuilder: QueryBuilder, expr: Expression<T>) {
         throw UnsupportedByDialectException("YDB does not support TRIM", currentDialect)
+    }
+
+    override fun upsert(
+        table: Table,
+        data: List<Pair<Column<*>, Any?>>,
+        expression: String,
+        onUpdate: List<Pair<Column<*>, Any?>>,
+        keyColumns: List<Column<*>>,
+        where: Op<Boolean>?,
+        transaction: Transaction
+    ): String {
+        val columns = data.map { it.first }
+        val columnsExpr = columns.takeIf { it.isNotEmpty() }?.joinToString(prefix = "(", postfix = ")") { transaction.identity(it) } ?: ""
+
+        return "UPSERT INTO ${transaction.identity(table)} $columnsExpr $expression"
     }
 }

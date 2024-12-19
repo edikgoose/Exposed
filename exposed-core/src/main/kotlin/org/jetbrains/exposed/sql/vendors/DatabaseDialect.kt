@@ -75,6 +75,8 @@ interface DatabaseDialect {
     /** Returns `true` if the dialect supports the RESTRICT action as part of a foreign key constraint clause. */
     val supportsRestrictReferenceOption: Boolean get() = true
 
+    val supportsCollate: Boolean get() = true
+
     /** Returns a mapping of dialect-specific characters to be escaped when used alongside the LIKE operator. */
     val likePatternSpecialChars: Map<Char, Char?> get() = defaultLikePatternSpecialChars
 

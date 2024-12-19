@@ -747,11 +747,12 @@ class DecimalColumnType(
  * Character column for storing single characters.
  */
 class CharacterColumnType : ColumnType<Char>() {
-    override fun sqlType(): String = "CHAR"
+    override fun sqlType(): String = currentDialect.dataTypeProvider.charTextType()
     override fun valueFromDB(value: Any): Char = when (value) {
         is Char -> value
         is Number -> value.toInt().toChar()
         is String -> value.single()
+        is ByteArray -> value.single().toInt().toChar()
         else -> error("Unexpected value of type Char: $value of ${value::class.qualifiedName}")
     }
 
@@ -823,7 +824,7 @@ open class CharColumnType(
 ) : StringColumnType(collate) {
     override fun sqlType(): String = buildString {
         append("CHAR($colLength)")
-        if (collate != null) {
+        if (collate != null && currentDialect.supportsCollate) {
             append(" COLLATE ${escapeAndQuote(collate)}")
         }
     }
@@ -869,7 +870,7 @@ open class VarCharColumnType(
 
     override fun sqlType(): String = buildString {
         append(preciseType())
-        if (collate != null) {
+        if (collate != null && currentDialect.supportsCollate) {
             append(" COLLATE ${escapeAndQuote(collate)}")
         }
     }
@@ -913,7 +914,7 @@ open class TextColumnType(
 
     override fun sqlType(): String = buildString {
         append(preciseType())
-        if (collate != null) {
+        if (collate != null && currentDialect.supportsCollate) {
             append(" COLLATE ${escapeAndQuote(collate)}")
         }
     }
