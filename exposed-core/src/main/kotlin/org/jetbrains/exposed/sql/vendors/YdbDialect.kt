@@ -92,8 +92,7 @@ internal object YdbDataTypeProvider : DataTypeProvider() {
 
 
     override fun binaryType() = "String"
-    override fun binaryType(length: Int) =
-        throw UnsupportedByDialectException("YDB does not support limited binary data type", currentDialect)
+    override fun binaryType(length: Int) = binaryType()
 
     override fun blobType() = binaryType()
 
@@ -142,5 +141,11 @@ internal object YdbFunctionProvider : FunctionProvider() {
         val columnsExpr = columns.takeIf { it.isNotEmpty() }?.joinToString(prefix = "(", postfix = ")") { transaction.identity(it) } ?: ""
 
         return "UPSERT INTO ${transaction.identity(table)} $columnsExpr $expression"
+    }
+
+    override fun replace(table: Table, columns: List<Column<*>>, expression: String, transaction: Transaction, prepared: Boolean): String {
+        val columnsExpr = columns.takeIf { it.isNotEmpty() }?.joinToString(prefix = "(", postfix = ")") { transaction.identity(it) } ?: ""
+
+        return "REPLACE INTO ${transaction.identity(table)} $columnsExpr $expression"
     }
 }
