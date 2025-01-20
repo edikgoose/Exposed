@@ -15,6 +15,7 @@ class DoubleColumnTypeTests : DatabaseTestsBase() {
     fun testInsertAndSelectFromDoubleColumn() {
         withTables(TestTable) {
             val id = TestTable.insertAndGetId {
+                it[id] = 1
                 it[amount] = 9.23
             }
 
@@ -36,6 +37,7 @@ class DoubleColumnTypeTests : DatabaseTestsBase() {
                 .forEach { exec(it) }
 
             val id = TestTable.insertAndGetId {
+                it[id] = 2
                 it[amount] = 9.23
             }
 

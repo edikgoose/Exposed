@@ -21,6 +21,7 @@ import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.jetbrains.exposed.sql.vendors.OracleDialect
 import org.jetbrains.exposed.sql.vendors.SQLServerDialect
 import org.jetbrains.exposed.sql.vendors.SQLiteDialect
+import org.jetbrains.exposed.sql.vendors.YdbDialect
 import org.junit.Assume
 import org.junit.Test
 import java.util.*
@@ -316,10 +317,10 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withTables(uIntTester, uLongTester) {
-            uIntTester.insert { }
+            uIntTester.insert { it[id] = 1u }
             assertEquals(1u, uIntTester.selectAll().single()[uIntTester.id])
 
-            uLongTester.insert { }
+            uLongTester.insert { it[id] = 1u }
             assertEquals(1u, uLongTester.selectAll().single()[uLongTester.id])
         }
     }
@@ -430,7 +431,10 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testIndexOnTextColumnInH2() {
         val testTable = object : Table("test_index_table") {
+            val id = integer("id")
             val column1 = text("column_1")
+
+            override val primaryKey = PrimaryKey(id)
 
             init {
                 index(isUnique = false, column1)
@@ -497,6 +501,8 @@ class DDLTests : DatabaseTestsBase() {
             val alter = SchemaUtils.createIndex(t.indices[0])
             if (currentDialectTest is SQLiteDialect) {
                 assertEquals("CREATE UNIQUE INDEX ${"U_T1_NAME"} ON ${"t1".inProperCase()} ($q${"name".inProperCase()}$q)", alter)
+            } else if (currentDialectTest is YdbDialect) {
+                assertEquals("ALTER TABLE ${"t1".inProperCase()} ADD INDEX ${"U_T1_NAME"} GLOBAL UNIQUE ON ($q${"name".inProperCase()}$q)", alter)
             } else {
                 assertEquals("ALTER TABLE ${"t1".inProperCase()} ADD CONSTRAINT ${"U_T1_NAME"} UNIQUE ($q${"name".inProperCase()}$q)", alter)
             }
@@ -507,8 +513,11 @@ class DDLTests : DatabaseTestsBase() {
     @Suppress("MaximumLineLength")
     fun testMultiColumnIndex() {
         val t = object : Table("t1") {
+            val id = integer("id").autoIncrement()
             val type = varchar("type", 255)
             val name = varchar("name", 255)
+
+            override val primaryKey = PrimaryKey(id)
 
             init {
                 index(false, name, type)
@@ -520,13 +529,26 @@ class DDLTests : DatabaseTestsBase() {
             val indexAlter = SchemaUtils.createIndex(t.indices[0])
             val uniqueAlter = SchemaUtils.createIndex(t.indices[1])
             val q = db.identifierManager.quoteString
-            assertEquals(
-                "CREATE INDEX ${"t1_name_type".inProperCase()} ON ${"t1".inProperCase()} ($q${"name".inProperCase()}$q, $q${"type".inProperCase()}$q)",
-                indexAlter
-            )
+            if (currentDialectTest is YdbDialect) {
+                assertEquals(
+                    "ALTER TABLE ${"t1".inProperCase()} ADD INDEX ${"t1_name_type".inProperCase()} GLOBAL ON ($q${"name".inProperCase()}$q, $q${"type".inProperCase()}$q)",
+                    indexAlter
+                )
+            } else {
+                assertEquals(
+                    "CREATE INDEX ${"t1_name_type".inProperCase()} ON ${"t1".inProperCase()} ($q${"name".inProperCase()}$q, $q${"type".inProperCase()}$q)",
+                    indexAlter
+                )
+            }
+
             if (currentDialectTest is SQLiteDialect) {
                 assertEquals(
                     "CREATE UNIQUE INDEX ${"t1_type_name".inProperCase()} ON ${"t1".inProperCase()} ($q${"type".inProperCase()}$q, $q${"name".inProperCase()}$q)",
+                    uniqueAlter
+                )
+            } else if (currentDialectTest is YdbDialect) {
+                assertEquals(
+                    "ALTER TABLE ${"t1".inProperCase()} ADD INDEX ${"t1_type_name_unique".inProperCase()} GLOBAL UNIQUE ON ($q${"type".inProperCase()}$q, $q${"name".inProperCase()}$q)",
                     uniqueAlter
                 )
             } else {
@@ -541,8 +563,11 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testMultiColumnIndexCustomName() {
         val t = object : Table("t1") {
+            val id = integer("id")
             val type = varchar("type", 255)
             val name = varchar("name", 255)
+
+            override val primaryKey = PrimaryKey(id)
 
             init {
                 index("I_T1_NAME_TYPE", false, name, type)
@@ -572,9 +597,12 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testIndexWithFunctions() {
         val tester = object : Table("tester") {
+            val id = integer("id")
             val amount = integer("amount")
             val price = integer("price")
             val item = varchar("item", 32).nullable()
+
+            override val primaryKey = PrimaryKey(id)
 
             init {
                 index(customIndexName = "tester_plus_index", isUnique = false, functions = listOf(amount.plus(price)))
@@ -584,7 +612,7 @@ class DDLTests : DatabaseTestsBase() {
         }
 
         withDb { testDb ->
-            val functionsNotSupported = testDb in TestDB.ALL_MARIADB + TestDB.ALL_H2 + TestDB.SQLSERVER + TestDB.MYSQL_V5
+            val functionsNotSupported = testDb in TestDB.ALL_MARIADB + TestDB.ALL_H2 + TestDB.SQLSERVER + TestDB.MYSQL_V5 + TestDB.YDB
 
             val tableProperName = tester.tableName.inProperCase()
             val priceColumnName = tester.price.nameInDatabaseCase()
@@ -624,7 +652,9 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testBinaryWithoutLength() {
         val tableWithBinary = object : Table("TableWithBinary") {
+            val id = integer("id")
             val binaryColumn = binary("binaryColumn")
+            override val primaryKey = PrimaryKey(id)
         }
 
         fun SizedIterable<ResultRow>.readAsString() = map { String(it[tableWithBinary.binaryColumn]) }
@@ -656,8 +686,10 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testBinary() {
         val t = object : Table("t") {
+            val id = integer("id")
             val binary = binary("bytes", 10).nullable()
             val byteCol = binary("byteCol", 1).clientDefault { byteArrayOf(0) }
+            override val primaryKey = PrimaryKey(id)
         }
 
         fun SizedIterable<ResultRow>.readAsString() = map { result -> result[t.binary]?.let { String(it) } }
@@ -814,7 +846,9 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testBooleanColumnType() {
         val boolTable = object : Table("booleanTable") {
+            val id = integer("id")
             val bool = bool("bool")
+            override val primaryKey = PrimaryKey(id)
         }
 
         withTables(boolTable) {
@@ -887,8 +921,10 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testCheckConstraint01() {
         val checkTable = object : Table("checkTable") {
+            val id = integer("id")
             val positive = integer("positive").check { it greaterEq 0 }
             val negative = integer("negative").check("subZero") { it less 0 }
+            override val primaryKey = PrimaryKey(id)
         }
 
         withTables(excludeSettings = listOf(TestDB.MYSQL_V5), checkTable) {
@@ -918,9 +954,10 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testCheckConstraint02() {
         val checkTable = object : Table("multiCheckTable") {
+            val id = integer("id")
             val positive = integer("positive")
             val negative = integer("negative")
-
+            override val primaryKey = PrimaryKey(id)
             init {
                 check("multi") { (negative less 0) and (positive greaterEq 0) }
             }
@@ -953,7 +990,9 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testCreateAndDropCheckConstraint() {
         val tester = object : Table("tester") {
+            val id = integer("id")
             val amount = integer("amount")
+            override val primaryKey = PrimaryKey(id)
         }
 
         withTables(tester) { testDb ->
@@ -992,8 +1031,9 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testEqOperatorWithoutDBConnection() {
         object : Table("test") {
+            val id = integer("id")
             val testColumn: Column<Int?> = integer("test_column").nullable()
-
+            override val primaryKey = PrimaryKey(id)
             init {
                 check("test_constraint") {
                     testColumn.isNotNull() eq Op.TRUE
@@ -1005,8 +1045,9 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testNeqOperatorWithoutDBConnection() {
         object : Table("test") {
+            val id = integer("id")
             val testColumn: Column<Int?> = integer("test_column").nullable()
-
+            override val primaryKey = PrimaryKey(id)
             init {
                 check("test_constraint") {
                     testColumn.isNotNull() neq Op.TRUE
@@ -1085,9 +1126,10 @@ class DDLTests : DatabaseTestsBase() {
     @Test
     fun testCompositeFKReferencingUniqueIndex() {
         val tableA = object : Table("TableA") {
+            val id = integer("id")
             val idA = integer("id_a")
             val idB = integer("id_b")
-
+            override val primaryKey = PrimaryKey(id)
             init {
                 uniqueIndex(idA, idB)
             }
@@ -1177,6 +1219,7 @@ class DDLTests : DatabaseTestsBase() {
 
         val tableC = object : Table("TableC") {
             val idC = integer("id_c").uniqueIndex()
+            override val primaryKey = PrimaryKey(idC)
         }
 
         val tableB = object : Table("TableB") {

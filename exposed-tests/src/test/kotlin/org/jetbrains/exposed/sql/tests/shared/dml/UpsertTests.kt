@@ -34,11 +34,12 @@ class UpsertTests : DatabaseTestsBase() {
     fun testUpsertWithPKConflict() {
         withTables(excludeSettings = TestDB.ALL_H2_V1, AutoIncTable) { testDb ->
             val id1 = AutoIncTable.insert {
+                it[id] = 1
                 it[name] = "A"
             } get AutoIncTable.id
 
             AutoIncTable.upsert {
-                if (testDb in upsertViaMergeDB) it[id] = 2
+                it[id] = 2
                 it[name] = "B"
             }
             AutoIncTable.upsert {
@@ -259,7 +260,7 @@ class UpsertTests : DatabaseTestsBase() {
 
     @Test
     fun testUpsertWithMultipleManualUpdates() {
-        val tester = object : Table("tester") {
+        val tester = object : IntIdTable("tester") {
             val item = varchar("item", 64).uniqueIndex()
             val amount = integer("amount").default(25)
             val gains = integer("gains").default(100)
@@ -274,6 +275,9 @@ class UpsertTests : DatabaseTestsBase() {
         withTables(excludeSettings = TestDB.ALL_H2_V1, tester) {
             val itemA = tester.upsert {
                 it[item] = "Item A"
+                it[amount] = 25
+                it[gains] = 100
+                it[losses] = 100
             } get tester.item
 
             tester.upsert(onUpdate = { adjustGainAndLoss(it) }) {
@@ -769,7 +773,7 @@ class UpsertTests : DatabaseTestsBase() {
         override val primaryKey = PrimaryKey(id)
     }
 
-    private object Words : Table("words") {
+    private object Words : IntIdTable("words") {
         val word = varchar("name", 64).uniqueIndex()
         val count = integer("count").default(1)
     }

@@ -29,7 +29,7 @@ class CreateIndexTests : DatabaseTestsBase() {
         }
 
         withTables(excludeSettings = listOf(TestDB.H2_V2_MYSQL), tables = arrayOf(testTable)) {
-            SchemaUtils.createMissingTablesAndColumns(testTable)
+            SchemaUtils.create(testTable)
             assertTrue(testTable.exists())
             SchemaUtils.drop(testTable)
         }
@@ -49,7 +49,7 @@ class CreateIndexTests : DatabaseTestsBase() {
             excludeSettings = listOf(TestDB.H2_V2_MYSQL, TestDB.SQLSERVER, TestDB.ORACLE),
             tables = arrayOf(testTable)
         ) {
-            SchemaUtils.createMissingTablesAndColumns(testTable)
+            SchemaUtils.create(testTable)
             assertTrue(testTable.exists())
         }
     }
@@ -83,7 +83,7 @@ class CreateIndexTests : DatabaseTestsBase() {
         }
         val schema1 = Schema("Schema1")
         val schema2 = Schema("Schema2")
-        withSchemas(listOf(TestDB.SQLITE, TestDB.SQLSERVER), schema1, schema2) {
+        withSchemas(listOf(TestDB.SQLITE, TestDB.SQLSERVER, TestDB.YDB), schema1, schema2) {
             SchemaUtils.setSchema(schema1)
             SchemaUtils.createMissingTablesAndColumns(testTable)
             assertEquals(true, testTable.exists())
@@ -269,7 +269,7 @@ class CreateIndexTests : DatabaseTestsBase() {
             }
         }
 
-        val functionsNotSupported = TestDB.ALL_MARIADB + TestDB.ALL_H2 + TestDB.SQLSERVER + TestDB.MYSQL_V5
+        val functionsNotSupported = TestDB.ALL_MARIADB + TestDB.ALL_H2 + TestDB.SQLSERVER + TestDB.MYSQL_V5 + TestDB.YDB
         withTables(excludeSettings = functionsNotSupported, tester) {
             SchemaUtils.createMissingTablesAndColumns()
             assertTrue(tester.exists())

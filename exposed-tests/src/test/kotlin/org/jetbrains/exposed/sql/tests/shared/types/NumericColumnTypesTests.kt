@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.tests.currentDialectTest
 import org.jetbrains.exposed.sql.tests.shared.assertEquals
 import org.jetbrains.exposed.sql.tests.shared.assertFailAndRollback
 import org.jetbrains.exposed.sql.tests.shared.assertTrue
+import org.jetbrains.exposed.sql.tests.shared.types.UnsignedColumnTypeTests.UByteTable.autoIncrement
 import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.junit.Test
 import java.math.BigDecimal
@@ -16,6 +17,9 @@ class NumericColumnTypesTests : DatabaseTestsBase() {
     @Test
     fun testShortAcceptsOnlyAllowedRange() {
         val testTable = object : Table("test_table") {
+            val id = integer("id").autoIncrement()
+            override val primaryKey = PrimaryKey(id)
+
             val short = short("short")
         }
 

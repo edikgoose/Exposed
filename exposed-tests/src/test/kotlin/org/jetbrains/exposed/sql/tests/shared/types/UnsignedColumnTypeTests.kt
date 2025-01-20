@@ -11,24 +11,36 @@ import org.jetbrains.exposed.sql.tests.shared.assertEqualCollections
 import org.jetbrains.exposed.sql.tests.shared.assertEquals
 import org.jetbrains.exposed.sql.tests.shared.assertFailAndRollback
 import org.jetbrains.exposed.sql.tests.shared.assertTrue
+import org.jetbrains.exposed.sql.tests.shared.types.UnsignedColumnTypeTests.UByteTable.autoIncrement
 import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.jetbrains.exposed.sql.vendors.SQLServerDialect
 import org.junit.Test
 
 class UnsignedColumnTypeTests : DatabaseTestsBase() {
     object UByteTable : Table("ubyte_table") {
+        val id = integer("id").autoIncrement()
+        override val primaryKey = PrimaryKey(id)
         val unsignedByte = ubyte("ubyte")
     }
 
     object UShortTable : Table("ushort_table") {
+        val id = integer("id").autoIncrement()
+        override val primaryKey = PrimaryKey(id)
+
         val unsignedShort = ushort("ushort")
     }
 
     object UIntTable : Table("uint_table") {
+        val id = integer("id").autoIncrement()
+        override val primaryKey = PrimaryKey(id)
+
         val unsignedInt = uinteger("uint")
     }
 
     object ULongTable : Table("ulong_table") {
+        val id = integer("id").autoIncrement()
+        override val primaryKey = PrimaryKey(id)
+
         val unsignedLong = ulong("ulong")
     }
 
@@ -316,11 +328,17 @@ class UnsignedColumnTypeTests : DatabaseTestsBase() {
     fun testCheckConstraintNameAcrossMultipleTables() {
         val (col1, col2, col3) = listOf("num1", "num2", "num3")
         val tester1 = object : Table("tester_1") {
+            val id = integer("id").autoIncrement()
+            override val primaryKey = PrimaryKey(id)
+
             val unsigned1 = ubyte(col1)
             val unsigned2 = ushort(col2)
             val unsigned3 = uinteger(col3)
         }
         val tester2 = object : Table("tester_2") {
+            val id = integer("id").autoIncrement()
+            override val primaryKey = PrimaryKey(id)
+
             val unsigned1 = ubyte(col1)
             val unsigned2 = ushort(col2)
             val unsigned3 = uinteger(col3)

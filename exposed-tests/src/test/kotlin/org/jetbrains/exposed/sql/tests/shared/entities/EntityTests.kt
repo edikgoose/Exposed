@@ -25,6 +25,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
+var ID = 1
+var ID_L = 1L
+
 object EntityTestsData {
 
     object YTable : IdTable<String>("YTable") {
@@ -98,7 +101,7 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testDefaults01() {
         withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
-            val x = EntityTestsData.XEntity.new { }
+            val x = EntityTestsData.XEntity.new(ID++) { }
             assertEquals(x.b1, true, "b1 mismatched")
             assertEquals(x.b2, false, "b2 mismatched")
         }
@@ -126,7 +129,7 @@ class EntityTests : DatabaseTestsBase() {
     fun testTextFieldOutsideTheTransaction() {
         val objectsToVerify = arrayListOf<Pair<Human, TestDB>>()
         withTables(Humans) { testDb ->
-            val y1 = Human.new {
+            val y1 = Human.new(ID++) {
                 h = "foo"
             }
 
@@ -165,7 +168,7 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testOneFieldEntity() {
         withTables(OneAutoFieldTable) {
-            val new = SingleFieldEntity.new { }
+            val new = SingleFieldEntity.new(ID++) { }
             commit()
         }
     }
@@ -184,7 +187,7 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testBackReference02() {
         withTables(EntityTestsData.YTable, EntityTestsData.XTable) {
-            val b = EntityTestsData.BEntity.new { }
+            val b = EntityTestsData.BEntity.new(ID++) { }
             flushCache()
             val y = EntityTestsData.YEntity.new { }
             b.y = y
@@ -245,8 +248,8 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testInsertChildWithoutFlush() {
         withTables(Boards, Posts, Categories) {
-            val parent = Post.new { this.category = Category.new { title = "title" } }
-            Post.new { this.parent = parent } // first flush before referencing
+            val parent = Post.new(ID_L++) { this.category = Category.new(ID++) { title = "title" } }
+            Post.new(ID_L++) { this.parent = parent } // first flush before referencing
             assertEquals(2L, Post.all().count())
         }
     }
@@ -254,8 +257,8 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testInsertNonChildWithoutFlush() {
         withTables(Boards, Posts, Categories) {
-            val board = Board.new { name = "irrelevant" }
-            Post.new { this.board = board } // first flush before referencing
+            val board = Board.new(ID++) { name = "irrelevant" }
+            Post.new(ID_L++) { this.board = board } // first flush before referencing
             assertEquals(1, flushCache().size)
         }
     }
@@ -263,9 +266,9 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testThatQueriesWithinOtherQueryIteratorWorksFine() {
         withTables(Boards, Posts, Categories) {
-            val board1 = Board.new { name = "irrelevant" }
-            val board2 = Board.new { name = "relevant" }
-            val post1 = Post.new { board = board1 }
+            val board1 = Board.new(ID++) { name = "irrelevant" }
+            val board2 = Board.new(ID++) { name = "relevant" }
+            val post1 = Post.new(ID_L++) { board = board1 }
 
             Board.all().forEach {
                 it.posts.count() to it.posts.toList()
@@ -277,10 +280,10 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testInsertChildWithFlush() {
         withTables(Boards, Posts, Categories) {
-            val parent = Post.new { this.category = Category.new { title = "title" } }
+            val parent = Post.new(ID_L++) { this.category = Category.new(ID++) { title = "title" } }
             flushCache()
             assertNotNull(parent.id._value)
-            Post.new { this.parent = parent }
+            Post.new(ID_L++) { this.parent = parent }
             assertEquals(1, flushCache().size)
         }
     }
@@ -288,12 +291,12 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testInsertChildWithChild() {
         withTables(Boards, Posts, Categories) {
-            val parent = Post.new { this.category = Category.new { title = "title1" } }
-            val child1 = Post.new {
+            val parent = Post.new(ID_L++) { this.category = Category.new(ID++) { title = "title1" } }
+            val child1 = Post.new(ID_L++) {
                 this.parent = parent
-                this.category = Category.new { title = "title2" }
+                this.category = Category.new(ID++) { title = "title2" }
             }
-            Post.new { this.parent = child1 }
+            Post.new(ID_L++) { this.parent = child1 }
             flushCache()
         }
     }
@@ -301,15 +304,15 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testOptionalReferrersWithDifferentKeys() {
         withTables(Boards, Posts, Categories) {
-            val board = Board.new { name = "irrelevant" }
-            val post1 = Post.new {
+            val board = Board.new(ID++) { name = "irrelevant" }
+            val post1 = Post.new(ID_L++) {
                 this.board = board
-                this.category = Category.new { title = "title" }
+                this.category = Category.new(ID++) { title = "title" }
             }
             assertEquals(1L, board.posts.count())
             assertEquals(post1, board.posts.single())
 
-            Post.new { this.board = board }
+            Post.new(ID_L++) { this.board = board }
             assertEquals(2L, board.posts.count())
         }
     }
@@ -318,7 +321,7 @@ class EntityTests : DatabaseTestsBase() {
     fun testErrorOnSetToDeletedEntity() {
         withTables(Boards) {
             expectException<EntityNotFoundException> {
-                val board = Board.new { name = "irrelevant" }
+                val board = Board.new(ID++) { name = "irrelevant" }
                 board.delete()
                 board.name = "Cool"
             }
@@ -328,12 +331,12 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testCacheInvalidatedOnDSLDelete() {
         withTables(Boards) {
-            val board1 = Board.new { name = "irrelevant" }
+            val board1 = Board.new(ID++) { name = "irrelevant" }
             assertNotNull(Board.testCache(board1.id))
             board1.delete()
             assertNull(Board.testCache(board1.id))
 
-            val board2 = Board.new { name = "irrelevant" }
+            val board2 = Board.new(ID++) { name = "irrelevant" }
             assertNotNull(Board.testCache(board2.id))
             Boards.deleteWhere { Boards.id eq board2.id }
             assertNull(Board.testCache(board2.id))
@@ -343,12 +346,12 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testCacheInvalidatedOnDSLUpdate() {
         withTables(Boards) {
-            val board1 = Board.new { name = "irrelevant" }
+            val board1 = Board.new(ID++) { name = "irrelevant" }
             assertNotNull(Board.testCache(board1.id))
             board1.name = "relevant"
             assertEquals("relevant", board1.name)
 
-            val board2 = Board.new { name = "irrelevant2" }
+            val board2 = Board.new(ID++) { name = "irrelevant2" }
             assertNotNull(Board.testCache(board2.id))
             Boards.update({ Boards.id eq board2.id }) {
                 it[name] = "relevant2"
@@ -376,7 +379,7 @@ class EntityTests : DatabaseTestsBase() {
     fun testCacheInvalidatedOnDSLUpsert() {
         withTables(excludeSettings = TestDB.ALL_H2_V1, Items) { testDb ->
             val oldPrice = 20.0
-            val itemA = Item.new {
+            val itemA = Item.new(ID++) {
                 name = "Item A"
                 price = oldPrice
             }
@@ -415,7 +418,7 @@ class EntityTests : DatabaseTestsBase() {
     fun testDaoFindByIdAndUpdate() {
         withTables(Items) {
             val oldPrice = 20.0
-            val item = Item.new {
+            val item = Item.new(ID++) {
                 name = "Item A"
                 price = oldPrice
             }
@@ -444,7 +447,7 @@ class EntityTests : DatabaseTestsBase() {
     fun testDaoFindSingleByAndUpdate() {
         withTables(Items) {
             val oldPrice = 20.0
-            val item = Item.new {
+            val item = Item.new(ID++) {
                 name = "Item A"
                 price = oldPrice
             }
@@ -487,7 +490,7 @@ class EntityTests : DatabaseTestsBase() {
     class User(id: EntityID<Int>) : IntEntity(id) {
         companion object : IntEntityClass<User>(Users) {
             fun create(name: String): User {
-                val h = Human.new { h = name.take(2) }
+                val h = Human.new(ID++) { h = name.take(2) }
                 return User.new(h.id.value) {
                     this.name = name
                 }
@@ -521,7 +524,7 @@ class EntityTests : DatabaseTestsBase() {
     @Test(timeout = 5000)
     fun testSelfReferences() {
         withTables(SelfReferenceTable) {
-            val ref1 = SelfReferencedEntity.new { }
+            val ref1 = SelfReferencedEntity.new(ID++) { }
             ref1.parent = ref1.id
             val refRow = SelfReferenceTable.selectAll().where { SelfReferenceTable.id eq ref1.id }.single()
             assertEquals(ref1.id._value, refRow[SelfReferenceTable.parentId]!!.value)
@@ -531,16 +534,16 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testNonEntityIdReference() {
         withTables(Posts, Boards, Categories) {
-            val category1 = Category.new {
+            val category1 = Category.new(ID++) {
                 title = "cat1"
             }
 
-            val post1 = Post.new {
+            val post1 = Post.new(ID_L++) {
                 optCategory = category1
-                category = Category.new { title = "title" }
+                category = Category.new(ID++) { title = "title" }
             }
 
-            val post2 = Post.new {
+            val post2 = Post.new(ID_L++) {
                 optCategory = category1
                 parent = post1
             }
@@ -556,16 +559,16 @@ class EntityTests : DatabaseTestsBase() {
     fun callLimitOnRelationDoesntMutateTheCachedValue() {
         withTables(Posts, Boards, Categories) {
             addLogger(StdOutSqlLogger) // this is left in on purpose for flaky tests
-            val category1 = Category.new {
+            val category1 = Category.new(ID++) {
                 title = "cat1"
             }
 
-            Post.new {
+            Post.new(ID_L++) {
                 optCategory = category1
-                category = Category.new { title = "title" }
+                category = Category.new(ID++) { title = "title" }
             }
 
-            Post.new {
+            Post.new(ID_L++) {
                 optCategory = category1
             }
             commit()
@@ -583,9 +586,9 @@ class EntityTests : DatabaseTestsBase() {
     fun testOrderByOnEntities() {
         withTables(Categories) {
             Categories.deleteAll()
-            val category1 = Category.new { title = "Test1" }
-            val category3 = Category.new { title = "Test3" }
-            val category2 = Category.new { title = "Test2" }
+            val category1 = Category.new(ID++) { title = "Test1" }
+            val category3 = Category.new(ID++) { title = "Test3" }
+            val category2 = Category.new(ID++) { title = "Test2" }
 
             assertEqualLists(listOf(category1, category3, category2), Category.all().toList())
             assertEqualLists(listOf(category1, category2, category3), Category.all().orderBy(Categories.title to SortOrder.ASC).toList())
@@ -596,15 +599,15 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testThatUpdateOfInsertedEntitiesGoesBeforeAnInsert() {
         withTables(Categories, Posts, Boards) {
-            val category1 = Category.new {
+            val category1 = Category.new(ID++) {
                 title = "category1"
             }
 
-            val category2 = Category.new {
+            val category2 = Category.new(ID++) {
                 title = "category2"
             }
 
-            val post1 = Post.new {
+            val post1 = Post.new(ID_L++) {
                 category = category1
             }
 
@@ -613,7 +616,7 @@ class EntityTests : DatabaseTestsBase() {
 
             post1.category = category2
 
-            val post2 = Post.new {
+            val post2 = Post.new(ID_L++) {
                 category = category1
             }
 
@@ -652,7 +655,7 @@ class EntityTests : DatabaseTestsBase() {
     fun testNewIdWithGet() {
         // SQL Server doesn't support an explicit id for auto-increment table
         withTables(listOf(TestDB.SQLSERVER), Parents, Children) {
-            val parentId = Parent.new {
+            val parentId = Parent.new(ID_L++) {
                 name = "parent1"
             }.id.value
 
@@ -671,7 +674,7 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun `newly created entity flushed successfully`() {
         withTables(Boards) {
-            val board = Board.new { name = "Board1" }.apply {
+            val board = Board.new(ID++) { name = "Board1" }.apply {
                 assertEquals(true, flush())
             }
 
@@ -687,7 +690,7 @@ class EntityTests : DatabaseTestsBase() {
         withTables(Humans) {
             val human1 = newTransaction {
                 maxAttempts = 1
-                Human.new {
+                Human.new(ID++) {
                     this.h = "foo"
                 }
             }
@@ -820,25 +823,25 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadReferencesOnASizedIterable() {
         withTables(Regions, Schools) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val region2 = Region.new {
+            val region2 = Region.new(ID++) {
                 name = "England"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val school2 = School.new {
+            val school2 = School.new(ID++) {
                 name = "Harrow"
                 region = region1
             }
 
-            val school3 = School.new {
+            val school3 = School.new(ID++) {
                 name = "Winchester"
                 region = region2
             }
@@ -868,14 +871,14 @@ class EntityTests : DatabaseTestsBase() {
         }
 
         withTables(Regions, Schools) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
-            School.new {
+            School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
-            School.new {
+            School.new(ID++) {
                 name = "Harrow"
                 region = region1
             }
@@ -928,11 +931,11 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadReferencesOnAnEntity() {
         withTables(Regions, Schools) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
@@ -960,15 +963,15 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadOptionalReferencesOnASizedIterable() {
         withTables(Regions, Schools) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val region2 = Region.new {
+            val region2 = Region.new(ID++) {
                 name = "England"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
                 secondaryRegion = region2
@@ -977,7 +980,7 @@ class EntityTests : DatabaseTestsBase() {
                 if (currentDialectTest is OracleDialect) flush()
             }
 
-            val school2 = School.new {
+            val school2 = School.new(ID++) {
                 name = "Harrow"
                 region = region1
             }
@@ -1000,14 +1003,14 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadOptionalReferencesOnAnEntity() {
         withTables(Regions, Schools) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
-            val region2 = Region.new {
+            val region2 = Region.new(ID++) {
                 name = "England"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
                 secondaryRegion = region2
@@ -1030,45 +1033,45 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadReferrersOnASizedIterable() {
         withTables(Regions, Schools, Students) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val region2 = Region.new {
+            val region2 = Region.new(ID++) {
                 name = "England"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val school2 = School.new {
+            val school2 = School.new(ID++) {
                 name = "Harrow"
                 region = region1
             }
 
-            val school3 = School.new {
+            val school3 = School.new(ID++) {
                 name = "Winchester"
                 region = region2
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "Jack Smith"
                 school = school2
             }
 
-            val student3 = Student.new {
+            val student3 = Student.new(ID_L++) {
                 name = "Henry Smith"
                 school = school3
             }
 
-            val student4 = Student.new {
+            val student4 = Student.new(ID_L++) {
                 name = "Peter Smith"
                 school = school3
             }
@@ -1091,26 +1094,26 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadReferrersOnAnEntity() {
         withTables(Regions, Schools, Students) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "Jack Smith"
                 school = school1
             }
 
-            val student3 = Student.new {
+            val student3 = Student.new(ID_L++) {
                 name = "Henry Smith"
                 school = school1
             }
@@ -1131,31 +1134,31 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadOptionalReferrersOnASizedIterable() {
         withTables(Regions, Schools, Students, Detentions) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "Jack Smith"
                 school = school1
             }
 
-            val detention1 = Detention.new {
+            val detention1 = Detention.new(ID_L++) {
                 reason = "Poor Behaviour"
                 student = student1
             }
 
-            val detention2 = Detention.new {
+            val detention2 = Detention.new(ID_L++) {
                 reason = "Poor Behaviour"
                 student = student1
             }
@@ -1182,40 +1185,40 @@ class EntityTests : DatabaseTestsBase() {
             val now = System.currentTimeMillis()
             val now10 = now + 10
 
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val region2 = Region.new {
+            val region2 = Region.new(ID++) {
                 name = "England"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val school2 = School.new {
+            val school2 = School.new(ID++) {
                 name = "Harrow"
                 region = region1
             }
 
-            val school3 = School.new {
+            val school3 = School.new(ID++) {
                 name = "Winchester"
                 region = region2
             }
 
-            val holiday1 = Holiday.new {
+            val holiday1 = Holiday.new(ID_L++) {
                 holidayStart = now
                 holidayEnd = now10
             }
 
-            val holiday2 = Holiday.new {
+            val holiday2 = Holiday.new(ID_L++) {
                 holidayStart = now
                 holidayEnd = now10
             }
 
-            val holiday3 = Holiday.new {
+            val holiday3 = Holiday.new(ID_L++) {
                 holidayStart = now
                 holidayEnd = now10
             }
@@ -1243,26 +1246,26 @@ class EntityTests : DatabaseTestsBase() {
             val now = System.currentTimeMillis()
             val now10 = now + 10
 
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val holiday1 = Holiday.new {
+            val holiday1 = Holiday.new(ID_L++) {
                 holidayStart = now
                 holidayEnd = now10
             }
 
-            val holiday2 = Holiday.new {
+            val holiday2 = Holiday.new(ID_L++) {
                 holidayStart = now
                 holidayEnd = now10
             }
 
-            val holiday3 = Holiday.new {
+            val holiday3 = Holiday.new(ID_L++) {
                 holidayStart = now
                 holidayEnd = now10
             }
@@ -1299,31 +1302,31 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadRelationAtDepth() {
         withTables(Regions, Schools, Holidays, SchoolHolidays, Students, Notes) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United Kingdom"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "Jack Smith"
                 school = school1
             }
 
-            val note1 = Note.new {
+            val note1 = Note.new(ID_L++) {
                 text = "Note text"
                 student = student1
             }
 
-            val note2 = Note.new {
+            val note2 = Note.new(ID_L++) {
                 text = "Note text"
                 student = student2
             }
@@ -1342,31 +1345,31 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadBackReferrenceOnASizedIterable() {
         withTables(Regions, Schools, Students, StudentBios) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United States"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "John Smith"
                 school = school1
             }
 
-            val bio1 = StudentBio.new {
+            val bio1 = StudentBio.new(ID_L++) {
                 student = student1
                 dateOfBirth = "01/01/2000"
             }
 
-            val bio2 = StudentBio.new {
+            val bio2 = StudentBio.new(ID_L++) {
                 student = student2
                 dateOfBirth = "01/01/2002"
             }
@@ -1387,31 +1390,31 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun preloadBackReferrenceOnAnEntity() {
         withTables(Regions, Schools, Students, StudentBios) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United States"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "John Smith"
                 school = school1
             }
 
-            val bio1 = StudentBio.new {
+            val bio1 = StudentBio.new(ID_L++) {
                 student = student1
                 dateOfBirth = "01/01/2000"
             }
 
-            val bio2 = StudentBio.new {
+            val bio2 = StudentBio.new(ID_L++) {
                 student = student2
                 dateOfBirth = "01/01/2002"
             }
@@ -1431,26 +1434,26 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun `test reference cache doesn't fully invalidated on set entity reference`() {
         withTables(Regions, Schools, Students, StudentBios) {
-            val region1 = Region.new {
+            val region1 = Region.new(ID++) {
                 name = "United States"
             }
 
-            val school1 = School.new {
+            val school1 = School.new(ID++) {
                 name = "Eton"
                 region = region1
             }
 
-            val student1 = Student.new {
+            val student1 = Student.new(ID_L++) {
                 name = "James Smith"
                 school = school1
             }
 
-            val student2 = Student.new {
+            val student2 = Student.new(ID_L++) {
                 name = "John Smith"
                 school = school1
             }
 
-            val bio1 = StudentBio.new {
+            val bio1 = StudentBio.new(ID_L++) {
                 student = student1
                 dateOfBirth = "01/01/2000"
             }
@@ -1463,16 +1466,16 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun `test nested entity initialization`() {
         withTables(Posts, Categories, Boards) {
-            val post = Post.new {
-                parent = Post.new {
-                    board = Board.new {
+            val post = Post.new(ID_L++) {
+                parent = Post.new(ID_L++) {
+                    board = Board.new(ID++) {
                         name = "Parent Board"
                     }
-                    category = Category.new {
+                    category = Category.new(ID++) {
                         title = "Parent Category"
                     }
                 }
-                category = Category.new {
+                category = Category.new(ID++) {
                     title = "Child Category"
                 }
 
@@ -1497,7 +1500,7 @@ class EntityTests : DatabaseTestsBase() {
         val boardEntityClass = object : IntEntityClass<Board>(Boards, entityCtor = ::createBoard) {}
 
         withTables(Boards) {
-            val board = boardEntityClass.new {
+            val board = boardEntityClass.new(ID++) {
                 name = "Test Board"
             }
 
@@ -1594,7 +1597,7 @@ class EntityTests : DatabaseTestsBase() {
                 CreditCards.selectAll().where { CreditCards.id eq creditCardId }.single()[CreditCards.spendingLimit]
             )
 
-            val creditCard = CreditCard.new {
+            val creditCard = CreditCard.new(ID++) {
                 number = "0000111122223333"
             }.apply {
                 flush()
@@ -1606,7 +1609,7 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testEntityIdParam() {
         withTables(CreditCards) {
-            val newCard = CreditCard.new {
+            val newCard = CreditCard.new(ID++) {
                 number = "0000111122223333"
                 spendingLimit = 10000uL
             }
@@ -1656,17 +1659,17 @@ class EntityTests : DatabaseTestsBase() {
             }
             val lebanon = Country.findById(lebanonId)!!
 
-            Dish.new {
+            Dish.new(ID++) {
                 name = "Kebbeh"
                 country = lebanon
             }
 
-            Dish.new {
+            Dish.new(ID++) {
                 name = "Mjaddara"
                 country = lebanon
             }
 
-            Dish.new {
+            Dish.new(ID++) {
                 name = "Fatteh"
                 country = lebanon
             }
@@ -1719,17 +1722,17 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testEagerLoadingWithReferenceDifferentFromParentId() {
         withTables(Customers, Orders, configure = { keepLoadedReferencesOutOfTransaction = true }) {
-            val customer1 = Customer.new {
+            val customer1 = Customer.new(ID++) {
                 emailAddress = "customer1@testing.com"
                 name = "Customer1"
             }
 
-            val order1 = Order.new {
+            val order1 = Order.new(ID++) {
                 name = "Order1"
                 customer = customer1
             }
 
-            val order2 = Order.new {
+            val order2 = Order.new(ID++) {
                 name = "Order2"
                 customer = customer1
             }
@@ -1762,10 +1765,10 @@ class EntityTests : DatabaseTestsBase() {
     @Test
     fun testDifferentEntitiesMappedToTheSameTable() {
         withTables(TestTable) {
-            val entityA = TestEntityA.new {
+            val entityA = TestEntityA.new(ID++) {
                 value = 1
             }
-            val entityB = TestEntityB.new {
+            val entityB = TestEntityB.new(ID++) {
                 value = 2
             }
 

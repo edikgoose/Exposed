@@ -15,6 +15,7 @@ class BooleanColumnTypeTests : DatabaseTestsBase() {
     fun `true value`() {
         withTables(BooleanTable) {
             val id = BooleanTable.insertAndGetId {
+                it[id] = 4
                 it[boolColumn] = true
             }
 
@@ -27,6 +28,7 @@ class BooleanColumnTypeTests : DatabaseTestsBase() {
     fun `false value`() {
         withTables(BooleanTable) {
             val id = BooleanTable.insertAndGetId {
+                it[id] = 3
                 it[boolColumn] = false
             }
 
@@ -39,9 +41,11 @@ class BooleanColumnTypeTests : DatabaseTestsBase() {
     fun `bool in a condition`() {
         withTables(BooleanTable) {
             val idTrue = BooleanTable.insertAndGetId {
+                it[id] = 1
                 it[boolColumn] = true
             }
             val idFalse = BooleanTable.insertAndGetId {
+                it[id] = 2
                 it[boolColumn] = booleanParam(false)
             }
 
@@ -56,6 +60,8 @@ class BooleanColumnTypeTests : DatabaseTestsBase() {
     @Test
     fun testCustomCharBooleanColumnType() {
         val tester = object : Table("tester") {
+            val id = integer("id").autoIncrement()
+            override val primaryKey = PrimaryKey(id)
             val charBooleanColumn = charBoolean("charBooleanColumn")
             val charBooleanColumnWithDefault = charBoolean("charBooleanColumnWithDefault")
                 .default(false)
@@ -63,6 +69,7 @@ class BooleanColumnTypeTests : DatabaseTestsBase() {
 
         withTables(tester) {
             tester.insert {
+                it[charBooleanColumnWithDefault] = false
                 it[charBooleanColumn] = true
             }
 

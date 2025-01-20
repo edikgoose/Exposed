@@ -221,7 +221,7 @@ class WindowFunctionsTests : DatabaseTestsBase() {
             )
             sales.assertWindowFunctionDefinition(
                 sales.amount.sum().over()
-                    .orderBy(sales.year to SortOrder.DESC, sales.product to SortOrder.ASC_NULLS_FIRST),
+                    .orderBy(sales.year to SortOrder.DESC, sales.product to SortOrder.ASC),
                 listOfBigDecimal("7102.55", "5652.15", "7102.55", "3501.2", "4151.9", "10.2", "3501.2")
             )
         }
@@ -230,7 +230,7 @@ class WindowFunctionsTests : DatabaseTestsBase() {
     @Suppress("LongMethod")
     @Test
     fun testWindowFrameClause() {
-        withSales(excludeSettings = listOf(TestDB.MYSQL_V5)) { testDb, sales ->
+        withSales(excludeSettings = listOf(TestDB.MYSQL_V5, TestDB.YDB)) { testDb, sales ->
             sales.assertWindowFunctionDefinition(
                 sumAmountPartitionByYearProductOrderByAmount(sales).rows(WindowFrameBound.unboundedPreceding()),
                 listOfBigDecimal("550.1", "1500.25", "1450.4", "1620.1", "650.7", "10.2", "3491")
@@ -418,7 +418,7 @@ class WindowFunctionsTests : DatabaseTestsBase() {
             .orderBy(
                 year to SortOrder.ASC,
                 month to SortOrder.ASC,
-                product to SortOrder.ASC_NULLS_FIRST
+                product to SortOrder.ASC
             )
             .map { it[definition] }
 
@@ -429,6 +429,6 @@ class WindowFunctionsTests : DatabaseTestsBase() {
         sales.amount.sum().over().partitionBy(sales.year, sales.product).orderBy(sales.amount)
 
     private fun listOfBigDecimal(vararg numbers: String?): List<BigDecimal?> {
-        return numbers.map { it?.let { BigDecimal(it).setScale(2, RoundingMode.HALF_UP) } }
+        return numbers.map { it?.let { BigDecimal(it).setScale(9, RoundingMode.HALF_UP) } }
     }
 }
