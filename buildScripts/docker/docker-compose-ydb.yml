@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+    ydb:
+        image: ydbplatform/local-ydb:latest
+        container_name: ydb
+        restart: always
+        hostname: localhost
+        ports:
+            - "3006:3006"
+            - "8766:8765"
+        volumes:
+            - ./ydb-data:/ydb_certs
+            - ./ydb-data:/ydb_data
+        environment:
+            - GRPC_PORT=3006
+            - MON_PORT=8765
+            - YDB_KAFKA_PROXY_PORT=9092
+            - YDB_USE_IN_MEMORY_PDISKS=true

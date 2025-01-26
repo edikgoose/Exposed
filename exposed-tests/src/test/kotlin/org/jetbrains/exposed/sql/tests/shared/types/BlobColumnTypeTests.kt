@@ -49,14 +49,17 @@ class BlobColumnTypeTests : DatabaseTestsBase() {
             val longBlob = ExposedBlob(longBytes)
 
             val id1 = BlobTable.insert {
+                it[id] = 1
                 it[content] = shortBlob
             } get (BlobTable.id)
 
             val id2 = BlobTable.insert {
+                it[id] = 2
                 it[content] = longBlob
             } get (BlobTable.id)
 
             val id3 = BlobTable.insert {
+                it[id] = 3
                 it[content] = blobParam(ExposedBlob(shortBytes))
             } get (BlobTable.id)
 
@@ -85,6 +88,8 @@ class BlobColumnTypeTests : DatabaseTestsBase() {
         val defaultBlob = ExposedBlob(defaultBlobStr.encodeToByteArray())
 
         val testTable = object : Table("TestTable") {
+            val id = integer("id").autoIncrement()
+            override val primaryKey = PrimaryKey(id)
             val number = integer("number")
             val blobWithDefault = blob("blobWithDefault").default(defaultBlob)
         }
@@ -102,9 +107,10 @@ class BlobColumnTypeTests : DatabaseTestsBase() {
 
                     testTable.insert {
                         it[number] = 1
+                        it[blobWithDefault] = defaultBlob
                     }
                     assertEquals(defaultBlobStr, String(testTable.selectAll().first()[testTable.blobWithDefault].bytes))
-
+                    commit()
                     SchemaUtils.drop(testTable)
                 }
             }

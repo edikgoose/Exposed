@@ -151,7 +151,7 @@ class Trim<T : String?>(
     /** Returns the expression being trimmed. */
     val expr: Expression<T>
 ) : Function<String>(TextColumnType()) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder): Unit = queryBuilder { append("TRIM(", expr, ")") }
+    override fun toQueryBuilder(queryBuilder: QueryBuilder): Unit = currentDialect.functionProvider.trim(queryBuilder, expr)
 }
 
 /**

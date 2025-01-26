@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.tests.DatabaseTestsBase
 import org.jetbrains.exposed.sql.tests.TestDB
+import org.jetbrains.exposed.sql.tests.shared.dml.DMLTestsData.UserData.user_id
 import java.math.BigDecimal
 import java.util.*
 
@@ -35,16 +36,20 @@ object DMLTestsData {
     }
 
     object UserData : Table() {
+        val id: Column<Int> = integer("id").autoIncrement()
         val user_id: Column<String> = reference("user_id", Users.id)
         val comment: Column<String> = varchar("comment", 30)
         val value: Column<Int> = integer("value")
+        override val primaryKey = PrimaryKey(id)
     }
 
     object Sales : Table() {
+        val id: Column<Int> = integer("id").autoIncrement()
         val year: Column<Int> = integer("year")
         val month: Column<Int> = integer("month")
         val product: Column<String?> = varchar("product", 30).nullable()
-        val amount: Column<BigDecimal> = decimal("amount", 8, 2)
+        val amount: Column<BigDecimal> = decimal("amount", 22, 9)
+        override val primaryKey = PrimaryKey(UserData.id)
     }
 
     object SomeAmounts : Table() {
@@ -68,14 +73,17 @@ fun DatabaseTestsBase.withCitiesAndUsers(
 
     withTables(exclude, cities, users, userData) {
         val saintPetersburgId = cities.insert {
+            it[id] = 1
             it[name] = "St. Petersburg"
         } get cities.id
 
         val munichId = cities.insert {
+            it[id] = 2
             it[name] = "Munich"
         } get cities.id
 
         cities.insert {
+            it[id] = 3
             it[name] = "Prague"
         }
 
@@ -103,13 +111,12 @@ fun DatabaseTestsBase.withCitiesAndUsers(
         users.insert {
             it[id] = "alex"
             it[name] = "Alex"
-            it[cityId] = null
+            it[flags] = 0 // no default value
         }
 
         users.insert {
             it[id] = "smth"
             it[name] = "Something"
-            it[cityId] = null
             it[flags] = userFlags.HAS_DATA
         }
 
@@ -165,7 +172,7 @@ private fun insertSale(year: Int, month: Int, product: String?, amount: String) 
     sales.insert {
         it[sales.year] = year
         it[sales.month] = month
-        it[sales.product] = product
+        product?.let { _ -> it[sales.product] = product }
         it[sales.amount] = BigDecimal(amount)
     }
 }

@@ -84,6 +84,8 @@ abstract class DataTypeProvider {
     /** Character type for storing strings of variable and _large_ length. */
     open fun largeTextType(): String = "TEXT"
 
+    open fun charTextType(): String = "CHAR"
+
     // Binary data types
 
     /** Binary type for storing binary strings of variable and _unlimited_ length. */

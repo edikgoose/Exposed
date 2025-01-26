@@ -266,7 +266,7 @@ open class InsertStatement<Key : Any>(
         columnsGeneratedOnDB().isNotEmpty() && currentDialect is PostgreSQLDialect ->
             transaction.connection.prepareStatement(sql, true)
 
-        autoIncColumns.isNotEmpty() ->
+        autoIncColumns.isNotEmpty() && currentDialect.supportsAutoIncReturn ->
             // http://viralpatel.net/blogs/oracle-java-jdbc-get-primary-key-insert-sql/
             transaction.connection.prepareStatement(sql, autoIncColumns.map { it.name.inProperCase() }.toTypedArray())
 

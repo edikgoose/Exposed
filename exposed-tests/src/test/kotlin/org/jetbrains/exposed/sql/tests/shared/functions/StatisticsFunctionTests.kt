@@ -1,5 +1,6 @@
 package org.jetbrains.exposed.sql.tests.shared.functions
 
+import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.tests.DatabaseTestsBase
@@ -41,7 +42,7 @@ class StatisticsFunctionTests : DatabaseTestsBase() {
         }
     }
 
-    private object SampleTestTable : Table("sample_table") {
+    private object SampleTestTable : IntIdTable("sample_table") {
         val number = integer("number").nullable()
     }
 
@@ -50,7 +51,7 @@ class StatisticsFunctionTests : DatabaseTestsBase() {
 
     private fun withSampleTable(excludeDB: List<TestDB> = emptyList(), body: Transaction.(TestDB) -> Unit) {
         // SQLite does not have any built-in statistics-specific aggregate functions
-        withTables(excludeSettings = excludeDB + TestDB.SQLITE, SampleTestTable) {
+        withTables(excludeSettings = excludeDB + TestDB.SQLITE + TestDB.YDB, SampleTestTable) {
             SampleTestTable.batchInsert(data) { num ->
                 this[SampleTestTable.number] = num
             }

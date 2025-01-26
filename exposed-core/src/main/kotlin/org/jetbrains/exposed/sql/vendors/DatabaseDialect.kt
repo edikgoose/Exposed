@@ -27,6 +27,12 @@ interface DatabaseDialect {
     /** Returns `true` if the dialect requires the use of a sequence to create an auto-increment column, `false` otherwise. */
     val needsSequenceToAutoInc: Boolean get() = false
 
+    /** Returns `true` if the dialect supports returning auto incremented values **/
+    val supportsAutoIncReturn: Boolean get() = true
+
+    /** Returns `true` if the dialect supports foreign key constraint **/
+    val supportsForeignKeyConstraint: Boolean get() = true
+
     /** Returns the default reference option for the dialect. */
     val defaultReferenceOption: ReferenceOption get() = ReferenceOption.RESTRICT
 
@@ -68,6 +74,8 @@ interface DatabaseDialect {
 
     /** Returns `true` if the dialect supports the RESTRICT action as part of a foreign key constraint clause. */
     val supportsRestrictReferenceOption: Boolean get() = true
+
+    val supportsCollate: Boolean get() = true
 
     /** Returns a mapping of dialect-specific characters to be escaped when used alongside the LIKE operator. */
     val likePatternSpecialChars: Map<Char, Char?> get() = defaultLikePatternSpecialChars
@@ -159,6 +167,9 @@ interface DatabaseDialect {
 
     /** Returns the SQL statement that adds a primary key specified [pkName] to an existing [table]. */
     fun addPrimaryKey(table: Table, pkName: String?, vararg pkColumns: Column<*>): String
+
+    /** Returns the SQL statement that define primary key constraint [pkName] for columns [columns] **/
+    fun primaryKeyConstraint(pkName: String?, columns: List<Column<*>>): String
 
     /** Returns the SQL statement that creates a database with the specified [name]. */
     fun createDatabase(name: String) = "CREATE DATABASE IF NOT EXISTS ${name.inProperCase()}"

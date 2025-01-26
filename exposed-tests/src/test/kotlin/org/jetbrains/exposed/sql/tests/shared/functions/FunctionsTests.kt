@@ -15,6 +15,7 @@ import org.jetbrains.exposed.sql.vendors.H2Dialect
 import org.jetbrains.exposed.sql.vendors.MysqlDialect
 import org.jetbrains.exposed.sql.vendors.OracleDialect
 import org.jetbrains.exposed.sql.vendors.SQLServerDialect
+import org.jetbrains.exposed.sql.vendors.YdbDialect
 import org.jetbrains.exposed.sql.vendors.h2Mode
 import org.junit.Test
 import kotlin.test.assertNotNull
@@ -176,7 +177,7 @@ class FunctionsTests : DatabaseTestsBase() {
 
     @Test
     fun testBitwiseOr1() {
-        withCitiesAndUsers { _, users, _ ->
+        withCitiesAndUsers(exclude = listOf(TestDB.YDB)) { _, users, _ ->
             val extra = 0b10
             val flagsWithExtra = Expression.build { users.flags bitwiseOr extra }
             val r = users.select(flagsWithExtra).orderBy(users.id).toList()
@@ -191,7 +192,7 @@ class FunctionsTests : DatabaseTestsBase() {
 
     @Test
     fun testBitwiseOr2() {
-        withCitiesAndUsers { _, users, _ ->
+        withCitiesAndUsers(exclude = listOf(TestDB.YDB)) { _, users, _ ->
             val extra = 0b10
             val flagsWithExtra = Expression.build { users.flags bitwiseOr intLiteral(extra) }
             val r = users.select(users.id, flagsWithExtra).orderBy(users.id).toList()
@@ -234,7 +235,7 @@ class FunctionsTests : DatabaseTestsBase() {
 
     @Test
     fun testFlag01() {
-        withCitiesAndUsers { _, users, _ ->
+        withCitiesAndUsers(exclude = listOf(TestDB.YDB)) { _, users, _ ->
             val adminFlag = DMLTestsData.Users.Flags.IS_ADMIN
             val r = users.select(users.id).where { users.flags hasFlag adminFlag }.orderBy(users.id).toList()
             assertEquals(2, r.size)
@@ -273,8 +274,10 @@ class FunctionsTests : DatabaseTestsBase() {
     @Test
     fun testCharLengthWithEdgeCaseStrings() {
         val testTable = object : Table("test_table") {
+            val id = integer("id").autoIncrement()
             val nullString = varchar("null_string", 32).nullable()
             val emptyString = varchar("empty_string", 32).nullable()
+            override val primaryKey = PrimaryKey(id)
         }
 
         withTables(testTable) {
@@ -333,9 +336,15 @@ class FunctionsTests : DatabaseTestsBase() {
             val locate = cities.name.locate("e")
             val results = cities.select(locate).toList()
 
-            assertEquals(6, results[0][locate]) // St. Petersburg
-            assertEquals(0, results[1][locate]) // Munich
-            assertEquals(6, results[2][locate]) // Prague
+            if (currentDialectTest is YdbDialect) {
+                assertEquals(5, results[0][locate]) // St. Petersburg
+                assertEquals(null, results[1][locate]) // Munich
+                assertEquals(5, results[2][locate]) // Prague
+            } else {
+                assertEquals(6, results[0][locate]) // St. Petersburg
+                assertEquals(0, results[1][locate]) // Munich
+                assertEquals(6, results[2][locate]) // Prague
+            }
         }
     }
 
@@ -346,8 +355,13 @@ class FunctionsTests : DatabaseTestsBase() {
             val results = cities.select(locate).toList()
 
             assertEquals(5, results[0][locate]) // St. Petersburg
-            assertEquals(0, results[1][locate]) // Munich
-            assertEquals(0, results[2][locate]) // Prague
+            if (currentDialectTest is YdbDialect) {
+                assertEquals(null, results[1][locate]) // Munich
+                assertEquals(null, results[2][locate]) // Prague
+            } else {
+                assertEquals(0, results[1][locate]) // Munich
+                assertEquals(0, results[2][locate]) // Prague
+            }
         }
     }
 
@@ -427,7 +441,7 @@ class FunctionsTests : DatabaseTestsBase() {
 
     @Test
     fun testConcatWithNumbers() {
-        withCitiesAndUsers { _, _, data ->
+        withCitiesAndUsers(exclude = listOf(TestDB.YDB)) { _, _, data ->
             val concatField = concat(data.user_id, stringLiteral(" - "), data.comment, stringLiteral(" - "), data.value)
             val result = data.select(concatField).where { data.user_id eq "sergey" }.single()
             assertEquals("sergey - Comment for Sergey - 30", result[concatField])
@@ -451,7 +465,7 @@ class FunctionsTests : DatabaseTestsBase() {
 
     @Test
     fun testCustomStringFunctions02() {
-        withCitiesAndUsers { cities, _, _ ->
+        withCitiesAndUsers(exclude = listOf(TestDB.YDB)) { cities, _, _ ->
             val replace = CustomStringFunction("REPLACE", cities.name, stringParam("gue"), stringParam("foo"))
             val result = cities.select(replace).where { cities.name eq "Prague" }.singleOrNull()
             assertEquals("Prafoo", result?.get(replace))
@@ -603,7 +617,7 @@ class FunctionsTests : DatabaseTestsBase() {
 
     @Test
     fun testConcatUsingPlusOperator() {
-        withCitiesAndUsers { _, users, _ ->
+        withCitiesAndUsers(exclude = listOf(TestDB.YDB)) { _, users, _ ->
             val concatField = SqlExpressionBuilder.run { users.id + " - " + users.name }
             val result = users.select(concatField).where { users.id eq "andrey" }.single()
             assertEquals("andrey - Andrey", result[concatField])

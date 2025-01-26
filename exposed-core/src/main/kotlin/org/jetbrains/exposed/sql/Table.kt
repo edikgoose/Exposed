@@ -1689,13 +1689,14 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
         return primaryKey?.let { primaryKey ->
             val tr = TransactionManager.current()
             val constraint = tr.db.identifierManager.cutIfNecessaryAndQuote(primaryKey.name)
-            return primaryKey.columns
-                .joinToString(prefix = "CONSTRAINT $constraint PRIMARY KEY (", postfix = ")", transform = tr::identity)
+            return currentDialect.primaryKeyConstraint(constraint, primaryKey.columns.toList())
         }
     }
 
     override fun createStatement(): List<String> {
-        val addForeignKeysInAlterPart = SchemaUtils.checkCycle(this) && currentDialect !is SQLiteDialect
+        val addForeignKeysInAlterPart = SchemaUtils.checkCycle(this)
+            && currentDialect !is SQLiteDialect
+            && currentDialect.supportsForeignKeyConstraint
 
         val foreignKeyConstraints = foreignKeys
 
@@ -1715,7 +1716,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
                     primaryKeyConstraint()?.let { append(", $it") }
                 }
 
-                if (!addForeignKeysInAlterPart && foreignKeyConstraints.isNotEmpty()) {
+                if (!addForeignKeysInAlterPart && foreignKeyConstraints.isNotEmpty() && currentDialect.supportsForeignKeyConstraint) {
                     foreignKeyConstraints.joinTo(this, prefix = ", ", separator = ", ") { it.foreignKeyPart }
                 }
 
@@ -1725,6 +1726,7 @@ open class Table(name: String = "") : ColumnSet(), DdlAware {
                             name.startsWith(generatedUnsignedCheckPrefix) ||
                                 name.startsWith(generatedSignedCheckPrefix)
                         }
+                        is YdbDialect -> emptyList()
                         is SQLServerDialect -> checkConstraints.filterNot { (name, _) ->
                             name.startsWith("${generatedUnsignedCheckPrefix}byte_") ||
                                 name.startsWith("${generatedSignedCheckPrefix}short")

@@ -21,6 +21,7 @@ postgre = "42.7.5"
 postgreNG = "0.8.9"
 sqlite3 = "3.48.0.0"
 sqlserver = "9.4.1.jre8"
+ydb = "2.3.7"
 
 springFramework = "6.2.2"
 springBoot = "3.4.2"
@@ -80,6 +81,7 @@ maria-db2 = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version.
 maria-db3 = { group = "org.mariadb.jdbc", name = "mariadb-java-client", version.ref = "mariaDB_v3" }
 oracle19 = { group = "com.oracle.database.jdbc", name = "ojdbc8", version.ref = "oracle19" }
 mssql = { group = "com.microsoft.sqlserver", name = "mssql-jdbc", version.ref = "sqlserver" }
+ydb = { group = "tech.ydb.jdbc", name = "ydb-jdbc-driver", version.ref = "ydb" }
 
 logcaptor = { group = "io.github.hakky54", name = "logcaptor", version.ref = "logcaptor" }
 

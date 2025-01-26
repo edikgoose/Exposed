@@ -12,7 +12,7 @@ import kotlin.test.assertContentEquals
 
 class ReplaceTests : DatabaseTestsBase() {
 
-    private val replaceNotSupported = TestDB.ALL - TestDB.ALL_MYSQL_LIKE - TestDB.SQLITE + TestDB.ALL_H2_V1
+    private val replaceNotSupported = TestDB.ALL - TestDB.ALL_MYSQL_LIKE - TestDB.SQLITE - TestDB.YDB + TestDB.ALL_H2_V1
 
     private object NewAuth : Table("new_auth") {
         val username = varchar("username", 16)
@@ -29,6 +29,8 @@ class ReplaceTests : DatabaseTestsBase() {
             NewAuth.batchReplace(listOf("username1", "username2")) { // inserts 2 new non-conflict rows with defaults
                 this[NewAuth.username] = it
                 this[NewAuth.session] = "session".toByteArray()
+                this[NewAuth.timestamp] = 0
+                this[NewAuth.serverID] = ""
             }
 
             val result1 = NewAuth.selectAll().toList()
@@ -82,6 +84,8 @@ class ReplaceTests : DatabaseTestsBase() {
             NewAuth.replace { // replace, like any insert, should accept defaults
                 it[username] = name1
                 it[session] = session1.toByteArray()
+                it[timestamp] = 0
+                it[serverID] = ""
             }
 
             val result1 = NewAuth.selectAll().single()
@@ -118,6 +122,7 @@ class ReplaceTests : DatabaseTestsBase() {
             tester.replace {
                 it[key1] = id1
                 it[key2] = id2
+                it[replaced] = 0
             }
 
             assertEquals(0, tester.selectAll().single()[tester.replaced])
@@ -150,6 +155,7 @@ class ReplaceTests : DatabaseTestsBase() {
                 it[username] = "username"
                 it[session] = "session".toByteArray()
                 it[serverID] = stringLiteral("  serverID1 ").trim()
+                it[timestamp] = 0
             }
 
             assertEquals("serverID1", NewAuth.selectAll().single()[NewAuth.serverID])
